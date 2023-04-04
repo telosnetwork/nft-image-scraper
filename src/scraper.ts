@@ -69,24 +69,30 @@ export default class Scraper {
     }
 
     private async downloadFile() {
-        try {
-            await pipeline(
-                got.stream(this.imageProperty, {
-                    timeout: {
-                        lookup: 1000,
-                        connect: 5000,
-                        secureConnect: 5000,
-                        socket: 1000,
-                        send: 10000,
-                        response: 10000
-                    }
-                }),
-                fs.createWriteStream(this.tmpFile)
-            )
-        } catch (e) {
-            const errorMsg = `Failure downloading file from ${this.imageProperty}`;
-            logger.error(errorMsg)
-            throw new Error(errorMsg)
+        isBase64 = this.imageProperty.test('^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2})$');
+        if(!isBase64){
+            try {
+                await pipeline(
+                    got.stream(this.imageProperty, {
+                        timeout: {
+                            lookup: 1000,
+                            connect: 5000,
+                            secureConnect: 5000,
+                            socket: 1000,
+                            send: 10000,
+                            response: 10000
+                        }
+                    }),
+                    fs.createWriteStream(this.tmpFile)
+                )
+            } catch (e) {
+                const errorMsg = `Failure downloading file from ${this.imageProperty}`;
+                logger.error(errorMsg)
+                throw new Error(errorMsg)
+            }
+        } else {
+            // Todo: handle base64   
+            // Todo: We first need a flag on the collection so we know to update the images regularly
         }
     }
 
