@@ -8,7 +8,6 @@ import stream from 'node:stream';
 import {promisify} from 'node:util'
 
 const pipeline = promisify(stream.pipeline);
-
 const logger = createLogger('Scraper');
 
 const gateways = [
@@ -104,12 +103,12 @@ export default class Scraper {
         try {
             if (!fs.existsSync(this.targetPath))
                 fs.mkdirSync(this.targetPath, {recursive: true});
-
-            await sharp(this.tmpFile, { pages: -1 }).resize({width: 280})
+        
+            await sharp(this.tmpFile, {pages: -1}).resize({width: 280})
                 .webp()
                 .toFile(`${this.targetPath}/280.webp`)
 
-            await sharp(this.tmpFile, { pages: -1 }).resize({width: 1440})
+            await sharp(this.tmpFile, {pages: -1}).resize({width: 1440})
                 .webp()
                 .toFile(`${this.targetPath}/1440.webp`)
         } catch (e) {
