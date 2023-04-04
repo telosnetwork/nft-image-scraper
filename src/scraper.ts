@@ -101,11 +101,11 @@ export default class Scraper {
             if (!fs.existsSync(this.targetPath))
                 fs.mkdirSync(this.targetPath, {recursive: true});
 
-            await sharp(this.tmpFile).resize({width: 280})
+            await sharp(this.tmpFile, { pages: -1 }).resize({width: 280})
                 .webp()
                 .toFile(`${this.targetPath}/280.webp`)
 
-            await sharp(this.tmpFile).resize({width: 1440})
+            await sharp(this.tmpFile, { pages: -1 }).resize({width: 1440})
                 .webp()
                 .toFile(`${this.targetPath}/1440.webp`)
         } catch (e) {
