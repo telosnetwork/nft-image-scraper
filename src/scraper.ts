@@ -51,6 +51,9 @@ export default class Scraper {
 
         if (imageProperty.startsWith("ipfs://"))
             imageProperty = imageProperty.replace("ipfs://", `${this.config.ipfsGateway}/`)
+        
+        if (imageProperty.startsWith("ipfs/"))
+            imageProperty = imageProperty.replace("ipfs/", `${this.config.ipfsGateway}/ipfs/`)
 
         for (const gatewayUrl of gateways)
             if (imageProperty.startsWith(gatewayUrl))
