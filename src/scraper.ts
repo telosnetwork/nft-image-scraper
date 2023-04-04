@@ -69,7 +69,7 @@ export default class Scraper {
     }
 
     private async downloadFile() {
-        isBase64 = this.imageProperty.test('^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2})$');
+        const isBase64 = this.imageProperty.test('^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2})$');
         if(!isBase64){
             try {
                 await pipeline(
