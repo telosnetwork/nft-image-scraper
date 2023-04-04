@@ -12,7 +12,7 @@ const pipeline = promisify(stream.pipeline);
 const logger = createLogger('Scraper');
 
 const gateways = [
-    "https://gateway.pinata.cloud/ipfs/"
+    "https://gateway.pinata.cloud/ipfs/", "https://nftstorage.link/ipfs/"
 ]
 
 export default class Scraper {
@@ -53,7 +53,7 @@ export default class Scraper {
             imageProperty = imageProperty.replace("ipfs://", `${this.config.ipfsGateway}/`)
         
         if (imageProperty.startsWith("ipfs/"))
-            imageProperty = imageProperty.replace("ipfs/", `${this.config.ipfsGateway}/ipfs/`)
+            imageProperty = imageProperty.replace("ipfs/", `${this.config.ipfsGateway}/`)
 
         for (const gatewayUrl of gateways)
             if (imageProperty.startsWith(gatewayUrl))
