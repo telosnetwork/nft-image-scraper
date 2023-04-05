@@ -46,7 +46,7 @@ export default class Scraper {
         } else {
             const parts = this.nft.token_uri.split('.');
             const extension = parts[parts.length - 1];
-            imageProperty = this.nft.token_uri;
+            imageProperty = this.nft.token_uri.trim();
             if(["mp4", "avi", "mpeg"].includes(extension) || imageProperty === null || imageProperty === "___MISSING_TOKEN_URI___"){
                 logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
                 throw new Error(`No image found!!`)
