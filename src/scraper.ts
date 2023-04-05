@@ -44,8 +44,13 @@ export default class Scraper {
         if (this.nft.metadata.image) {
             imageProperty = this.nft.metadata.image.trim()
         } else {
-            logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
-            throw new Error(`No image found!!`)
+            const parts = this.nft.token_uri.split('.');
+            const extension = parts[parts.length - 1];
+            imageProperty = this.nft.token_uri;
+            if(["mp4", "avi", "mpeg"].includes(extension) || imageProperty === null || imageProperty === "___MISSING_TOKEN_URI___"){
+                logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
+                throw new Error(`No image found!!`)
+            }
         }
 
         if (imageProperty.startsWith("ipfs://"))
@@ -136,5 +141,4 @@ export default class Scraper {
         const updateValues = [this.nft.contract, this.nft.token_id];
         await this.pool.query(updateSql, updateValues);
     }
-
 }
