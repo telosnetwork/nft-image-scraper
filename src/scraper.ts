@@ -13,6 +13,9 @@ const logger = createLogger('Scraper');
 const gateways = [
     "https://gateway.pinata.cloud/ipfs/", "https://nftstorage.link/ipfs/", "https://kitchen.mypinata.cloud/ipfs/"
 ]
+const gatewayDomains = [
+    "nftstorage.link"
+]
 
 export default class Scraper {
     private readonly targetPath: string;
@@ -58,14 +61,29 @@ export default class Scraper {
         
         if (imageProperty.startsWith("ipfs/"))
             imageProperty = imageProperty.replace("ipfs/", `${this.config.ipfsGateway}/`)
-
-        for (const gatewayUrl of gateways)
-            if (imageProperty.startsWith(gatewayUrl))
-                imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
-
-        return imageProperty;
+        
+        return this.filterGateways(imageProperty);
     }
 
+    private filterGateways(imageProperty: string){
+        for (const gatewayUrl of gateways) {
+            if (imageProperty.startsWith(gatewayUrl)) {
+                imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
+            }
+        }
+        for (const gatewayUrl of gatewayDomains) {
+            if(imageProperty.includes(gatewayUrl)){
+                const parts = imageProperty.split('://');
+                const subparts = parts[1].split('/');
+                const subpartsDomain = parts[1].split('.');
+                if(subparts[1]?.length > 0 && subpartsDomain[0]?.length > 0){
+                    imageProperty = this.config.ipfsGateway + '/' + subpartsDomain[0] + "/" + subparts[1];
+                }
+            }
+        }
+        return imageProperty;
+    }
+    
     private async resize() {
         await this.downloadFile();
         await this.resizeFile();
