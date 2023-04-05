@@ -11,7 +11,7 @@ const pipeline = promisify(stream.pipeline);
 const logger = createLogger('Scraper');
 
 const gateways = [
-    "https://gateway.pinata.cloud/ipfs/", "https://nftstorage.link/ipfs/"
+    "https://gateway.pinata.cloud/ipfs/", "https://nftstorage.link/ipfs/", "https://kitchen.mypinata.cloud/ipfs/"
 ]
 
 export default class Scraper {
