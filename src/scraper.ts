@@ -71,6 +71,14 @@ export default class Scraper {
                 imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
             }
         }
+        if (imageProperty.includes('dstor.cloud')) {
+            const parts = imageProperty.split('://');
+            const subparts = parts[1].split('.');
+            imageProperty = parts[0] + "://api";
+            for(let i = 1; i < subparts.length;i++){
+               imageProperty = imageProperty + '.' + subparts[i]
+            }
+        }
         for (const gatewayUrl of gatewayDomains) {
             if(imageProperty.includes(gatewayUrl)){
                 const parts = imageProperty.split('://');
