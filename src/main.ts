@@ -38,6 +38,22 @@ const fillQueue = async () => {
         for (const row of rows) {
             try {
                 logger.info(`Scraping ${row.contract}:${row.token_id}`)
+                
+                let ipfsCID = row.metadata?.image?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+                if(ipfsCID !== null){
+                    exec("export IPFS_PATH=/ipfs", (err) => {
+                        if(err){
+                            console.error("Could not set export path: " + err);
+                        } else {
+                            exec("ipfs pin add " + ipfsCID, (e) => {
+                                if(e){
+                                    console.error("Could not pin content with CID "  + ipfsCID + ": " +  e);
+                                }
+                            });
+                        }
+                    });
+                }
+
                 // TODO: Ensure that new NFTs will have last_scrub as NULL and set higher priority for those
                 queue.add(async () => {
                     try {
