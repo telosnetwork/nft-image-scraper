@@ -35,6 +35,7 @@ const query = `SELECT *
            OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 60
            OR scrub_last < NOW() - INTERVAL '1 hours' AND scrub_count < 80
            OR scrub_last < NOW() - INTERVAL '48 hours' AND scrub_count < 100
+           OR scrub_last < NOW() - INTERVAL '384 hours' AND scrub_count < 150
      )
      ORDER BY scrub_last ASC NULLS FIRST
      LIMIT ${config.querySize || 50}
