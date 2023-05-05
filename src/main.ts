@@ -25,13 +25,20 @@ const pool = new Pool({
     })
 
 const query = `SELECT *
-                   FROM nfts
-                   WHERE (image_cache = '' OR image_cache IS NULL)
-                     AND metadata IS NOT NULL
-                     AND metadata::text != '"___INVALID_METADATA___"'::text
-                     AND scrub_count < 100
-                   ORDER BY scrub_last ASC NULLS FIRST
-                   LIMIT ${config.querySize || 50}`;
+   FROM nfts
+   WHERE (image_cache = '' OR image_cache IS NULL)
+     AND metadata IS NOT NULL
+     AND metadata::text != '"___INVALID_METADATA___"'::text
+     AND (
+           scrub_count < 10
+           OR scrub_last < NOW() - INTERVAL '1 minutes' AND scrub_count < 50
+           OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 80
+           OR scrub_last < NOW() - INTERVAL '45 minutes' AND scrub_count < 100
+     )
+     ORDER BY scrub_last ASC NULLS FIRST
+     LIMIT ${config.querySize || 50}
+`;
+
 
 const fillQueue = async () => {
         const {rows} = await pool.query<NFT>(query);
