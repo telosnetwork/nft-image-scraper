@@ -31,9 +31,10 @@ const query = `SELECT *
      AND metadata::text != '"___INVALID_METADATA___"'::text
      AND (
            scrub_count < 10
-           OR scrub_last < NOW() - INTERVAL '1 minutes' AND scrub_count < 50
-           OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 80
-           OR scrub_last < NOW() - INTERVAL '45 minutes' AND scrub_count < 100
+           OR scrub_last < NOW() - INTERVAL '1 minutes' AND scrub_count < 40
+           OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 60
+           OR scrub_last < NOW() - INTERVAL '1 hours' AND scrub_count < 80
+           OR scrub_last < NOW() - INTERVAL '48 hours' AND scrub_count < 100
      )
      ORDER BY scrub_last ASC NULLS FIRST
      LIMIT ${config.querySize || 50}
