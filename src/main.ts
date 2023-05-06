@@ -50,13 +50,16 @@ const fillQueue = async () => {
                 
                 let ipfsCID = row.metadata?.image?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
                 if(ipfsCID !== null){
+                    let path = ipfsCID[0] + "/";
+                    let cidParts = row.metadata?.image.split(path);
+                    let ipfsCIDStr = (cidParts.length > 1) ? path + cidParts[cidParts.length - 1] : ipfsCID[0];
                     exec("export IPFS_PATH=/ipfs", (err) => {
                         if(err){
                             console.error("Could not set export path: " + err);
                         } else {
-                            exec("ipfs pin add " + ipfsCID, (e) => {
+                            exec("ipfs pin add " + ipfsCIDStr, (e) => {
                                 if(e){
-                                    console.error("Could not pin content with CID "  + ipfsCID + ": " +  e);
+                                    console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
                                 }
                             });
                         }
