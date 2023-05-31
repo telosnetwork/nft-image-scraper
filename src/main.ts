@@ -42,30 +42,61 @@ const query = `SELECT *
      LIMIT ${config.querySize || 50}
 `;
 
-
+const pinCID = (row: NFT) => {
+    let ipfsCIDStr = '';
+    if(row.metadata?.image){
+        if(typeof row.metadata.image === 'string'){
+            let ipfsCID = row.metadata.image.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.image.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        } else {
+            let ipfsCID = row.metadata.image.description?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.image.description?.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        }
+    } else if(row.metadata?.properties?.image){
+        if(typeof row.metadata.properties.image === 'string'){
+            let ipfsCID = row.metadata.properties.image.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.properties.image.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        } else {
+            let ipfsCID = row.metadata.properties.image.description?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.properties.image.description.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        }
+    }
+    if(ipfsCIDStr !== ''){
+        exec("export IPFS_PATH=/ipfs", (err) => {
+            if(err){
+                console.error("Could not set export path: " + err);
+            } else {
+                exec("ipfs pin add " + ipfsCIDStr, (e) => {
+                    if(e){
+                        console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
+                    }
+                });
+            }
+        });
+    }   
+}
 const fillQueue = async () => {
         const {rows} = await pool.query<NFT>(query);
         for (const row of rows) {
+            pinCID(row);
             try {
                 logger.info(`Scraping ${row.contract}:${row.token_id}`)
-                
-                let ipfsCID = row.metadata?.image?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
-                if(ipfsCID !== null){
-                    let path = ipfsCID[0] + "/";
-                    let cidParts = row.metadata?.image.split(path);
-                    let ipfsCIDStr = (cidParts.length > 1) ? path + cidParts[cidParts.length - 1] : ipfsCID[0];
-                    exec("export IPFS_PATH=/ipfs", (err) => {
-                        if(err){
-                            console.error("Could not set export path: " + err);
-                        } else {
-                            exec("ipfs pin add " + ipfsCIDStr, (e) => {
-                                if(e){
-                                    console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
-                                }
-                            });
-                        }
-                    });
-                }
 
                 // TODO: Ensure that new NFTs will have last_scrub as NULL and set higher priority for those
                 queue.add(async () => {
@@ -78,7 +109,7 @@ const fillQueue = async () => {
                 })
                 logger.info(`Scraping ${row.contract}:${row.token_id} complete`)
             } catch (e) {
-                logger.error(`Exception while scraping NFT: ${JSON.stringify(row, null, 4)}`)
+                logger.error(`Exception while scraping NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
             }
         }
     }
