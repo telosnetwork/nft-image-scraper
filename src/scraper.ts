@@ -42,17 +42,30 @@ export default class Scraper {
         }
     }
 
+    private parseProperty(field): string {
+        let imageProperty
+        if (field && typeof this.field === "string") {
+            imageProperty = field.trim()
+        } else if (field && typeof field === "object") {
+            if(field.image && typeof this.field === "string"){
+                imageProperty = this.nft.metadata.image.image.trim()
+            } else if(
+                typeof field.image === "object"
+                && field.image.description 
+                && (field.image.description?.startsWith('ipfs://') || this.nft.metadata.image.description?.startsWith('http'))
+            ){
+                imageProperty = this.nft.metadata.image.description.trim()
+            } 
+        }
+        return imageProperty;
+    }
     private getImageUrl(): string {
         let imageProperty
-        if (this.nft.metadata.image && typeof this.nft.metadata.image === "string") {
-            imageProperty = this.nft.metadata.image.trim()
-        } else if (this.nft.metadata.image && typeof this.nft.metadata.image === "object") {
-            if(this.nft.metadata.image.image){
-                imageProperty = this.nft.metadata.image.image.trim()
-            } else if(this.nft.metadata.image.description?.startsWith('ipfs://') || this.nft.metadata.image.description?.startsWith('http')){
-                imageProperty = this.nft.metadata.image.description.trim()
-            }
-        } else {
+        if (this.nft.metadata.image) {
+            imageProperty = this.parseProperty(this.nft.metadata.image);
+        } else if(this.nft.metadata.properties){
+            imageProperty = this.parseProperty(this.nft.metadata.properties);
+        } else if(!this.nft.metadata) {
             const parts = this.nft.token_uri.split('.');
             const extension = parts[parts.length - 1];
             imageProperty = this.nft.token_uri.trim();
