@@ -42,12 +42,12 @@ export default class Scraper {
         }
     }
 
-    private parseProperty(field): string {
+    private parseProperty(field: any): string {
         let imageProperty
-        if (field && typeof this.field === "string") {
+        if (field && typeof field === "string") {
             imageProperty = field.trim()
         } else if (field && typeof field === "object") {
-            if(field.image && typeof this.field === "string"){
+            if(field.image && typeof field === "string"){
                 imageProperty = this.nft.metadata.image.image.trim()
             } else if(
                 typeof field.image === "object"
@@ -60,7 +60,7 @@ export default class Scraper {
         return imageProperty;
     }
     private getImageUrl(): string {
-        let imageProperty
+        let imageProperty;
         if (this.nft.metadata.image) {
             imageProperty = this.parseProperty(this.nft.metadata.image);
         } else if(this.nft.metadata.properties){
@@ -74,11 +74,14 @@ export default class Scraper {
                 throw new Error(`No image found!!`)
             }
         }
+        
+        if(!imageProperty)
+            return '';
 
-        if (imageProperty.startsWith("ipfs://"))
+        if (imageProperty?.startsWith("ipfs://"))
             imageProperty = imageProperty.replace("ipfs://", `${this.config.ipfsGateway}/`)
         
-        if (imageProperty.startsWith("ipfs/"))
+        if (imageProperty?.startsWith("ipfs/"))
             imageProperty = imageProperty.replace("ipfs/", `${this.config.ipfsGateway}/`)
         
         return this.filterGateways(imageProperty);
@@ -86,11 +89,11 @@ export default class Scraper {
 
     private filterGateways(imageProperty: string){
         for (const gatewayUrl of gateways) {
-            if (imageProperty.startsWith(gatewayUrl)) {
+            if (imageProperty?.startsWith(gatewayUrl)) {
                 imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
             }
         }
-        if (imageProperty.includes('dstor.cloud')) {
+        if (imageProperty?.includes('dstor.cloud')) {
             const parts = imageProperty.split('://');
             const subparts = parts[1].split('.');
             imageProperty = parts[0] + "://api";
@@ -99,7 +102,7 @@ export default class Scraper {
             }
         }
         for (const gatewayUrl of gatewayDomains) {
-            if(imageProperty.includes(gatewayUrl)){
+            if(imageProperty?.includes(gatewayUrl)){
                 const parts = imageProperty.split('://');
                 const subparts = parts[1].split('/');
                 const subpartsDomain = parts[1].split('.');
