@@ -94,7 +94,11 @@ const pinCID = (row: NFT) => {
 const fillQueue = async () => {
         const {rows} = await pool.query<NFT>(query);
         for (const row of rows) {
-            pinCID(row);
+            try {
+                pinCID(row);
+            } catch (e) {
+                logger.error(`Exception while pinning NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
+            }
             try {
                 logger.info(`Scraping ${row.contract}:${row.token_id}`)
 
