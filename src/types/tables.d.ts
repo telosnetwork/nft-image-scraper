@@ -1,5 +1,5 @@
 interface Metadata {
-    image: string
+    image: any
 }
 
 interface NFT {
