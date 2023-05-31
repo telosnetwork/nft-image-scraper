@@ -44,8 +44,14 @@ export default class Scraper {
 
     private getImageUrl(): string {
         let imageProperty
-        if (this.nft.metadata.image) {
+        if (this.nft.metadata.image && typeof this.nft.metadata.image === "string") {
             imageProperty = this.nft.metadata.image.trim()
+        } else if (this.nft.metadata.image && typeof this.nft.metadata.image === "object") {
+            if(this.nft.metadata.image.image){
+                imageProperty = this.nft.metadata.image.image.trim()
+            } else if(this.nft.metadata.image.description?.startsWith('ipfs://') || this.nft.metadata.image.description?.startsWith('http')){
+                imageProperty = this.nft.metadata.image.description.trim()
+            }
         } else {
             const parts = this.nft.token_uri.split('.');
             const extension = parts[parts.length - 1];
