@@ -1,6 +1,7 @@
 import {sleep} from "./util/utils.js";
 import {createLogger} from "./util/logger.js";
 import pg from 'pg';
+import { exec } from "child_process";
 
 const Pool = pg.Pool;
 import PQueue from "p-queue";
