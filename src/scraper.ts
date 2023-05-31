@@ -128,12 +128,12 @@ export default class Scraper {
                 await pipeline(
                     got.stream(this.imageProperty, {
                         timeout: {
-                            lookup: 1000,
-                            connect: 5000,
-                            secureConnect: 5000,
-                            socket: 1000,
+                            lookup: 3000,
+                            connect: 8000,
+                            secureConnect: 8000,
+                            socket: 1500,
                             send: 10000,
-                            response: 10000
+                            response: 12000
                         }
                     }),
                     fs.createWriteStream(this.tmpFile)
