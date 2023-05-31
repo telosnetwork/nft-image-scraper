@@ -1,5 +1,6 @@
 interface Metadata {
     image: any
+    properties: any
 }
 
 interface NFT {
