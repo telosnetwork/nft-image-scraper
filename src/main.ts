@@ -1,6 +1,7 @@
 import {sleep} from "./util/utils.js";
 import {createLogger} from "./util/logger.js";
 import pg from 'pg';
+import { exec } from "child_process";
 
 const Pool = pg.Pool;
 import PQueue from "p-queue";
@@ -25,19 +26,82 @@ const pool = new Pool({
     })
 
 const query = `SELECT *
-                   FROM nfts
-                   WHERE (image_cache = '' OR image_cache IS NULL)
-                     AND metadata IS NOT NULL
-                     AND metadata::text != '"___INVALID_METADATA___"'::text
-                     AND scrub_count < 100
-                   ORDER BY scrub_last ASC NULLS FIRST
-                   LIMIT ${config.querySize || 50}`;
+   FROM nfts
+   WHERE (image_cache = '' OR image_cache IS NULL)
+     AND metadata IS NOT NULL
+     AND metadata::text != '"___INVALID_METADATA___"'::text
+     AND (
+           scrub_count < 10
+           OR scrub_last < NOW() - INTERVAL '1 minutes' AND scrub_count < 40
+           OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 60
+           OR scrub_last < NOW() - INTERVAL '1 hours' AND scrub_count < 80
+           OR scrub_last < NOW() - INTERVAL '48 hours' AND scrub_count < 100
+           OR scrub_last < NOW() - INTERVAL '384 hours' AND scrub_count < 150
+     )
+     ORDER BY scrub_last ASC NULLS FIRST
+     LIMIT ${config.querySize || 50}
+`;
 
+const pinCID = (row: NFT) => {
+    let ipfsCIDStr = '';
+    if(row.metadata?.image){
+        if(typeof row.metadata.image === 'string'){
+            let ipfsCID = row.metadata.image.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.image.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        } else {
+            let ipfsCID = row.metadata.image.description?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.image.description?.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        }
+    } else if(row.metadata?.properties?.image){
+        if(typeof row.metadata.properties.image === 'string'){
+            let ipfsCID = row.metadata.properties.image.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.properties.image.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        } else {
+            let ipfsCID = row.metadata.properties.image.description?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+            if(ipfsCID !== null){
+                let path = ipfsCID[0] + "/";
+                let cidParts = row.metadata.properties.image.description.split(path);
+                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+            }
+        }
+    }
+    if(ipfsCIDStr !== ''){
+        exec("export IPFS_PATH=/ipfs", (err) => {
+            if(err){
+                console.error("Could not set export path: " + err);
+            } else {
+                exec("ipfs pin add " + ipfsCIDStr, (e) => {
+                    if(e){
+                        console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
+                    }
+                });
+            }
+        });
+    }   
+}
 const fillQueue = async () => {
         const {rows} = await pool.query<NFT>(query);
         for (const row of rows) {
             try {
+                pinCID(row);
+            } catch (e) {
+                logger.error(`Exception while pinning NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
+            }
+            try {
                 logger.info(`Scraping ${row.contract}:${row.token_id}`)
+
                 // TODO: Ensure that new NFTs will have last_scrub as NULL and set higher priority for those
                 queue.add(async () => {
                     try {
@@ -49,7 +113,7 @@ const fillQueue = async () => {
                 })
                 logger.info(`Scraping ${row.contract}:${row.token_id} complete`)
             } catch (e) {
-                logger.error(`Exception while scraping NFT: ${JSON.stringify(row, null, 4)}`)
+                logger.error(`Exception while scraping NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
             }
         }
     }
