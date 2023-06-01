@@ -43,18 +43,18 @@ export default class Scraper {
     }
 
     private parseProperty(field: any): string {
-        let imageProperty
+        let imageProperty;
         if (field && typeof field === "string") {
-            imageProperty = field.trim()
+            imageProperty = field.trim();
         } else if (field && typeof field === "object") {
-            if(field.image && typeof field === "string"){
-                imageProperty = this.nft.metadata.image.image.trim()
+            if(field.image && typeof field.image === "string"){
+                imageProperty = field.image;
             } else if(
                 typeof field.image === "object"
                 && field.image.description 
-                && (field.image.description?.startsWith('ipfs://') || this.nft.metadata.image.description?.startsWith('http'))
+                && (field.image.description?.startsWith('ipfs://') || field.image.description?.startsWith('http'))
             ){
-                imageProperty = this.nft.metadata.image.description.trim()
+                imageProperty = field.image.description.trim()
             } 
         }
         return imageProperty;
@@ -115,40 +115,33 @@ export default class Scraper {
     }
     
     private async resize() {
-        await this.downloadFile();
+        if(!this.imageProperty || !this.imageProperty.startsWith('http') || this.imageProperty.length > 5000){
+            return;   
+        }
+        await this.downloadFile();  
         await this.resizeFile();
         // TODO: on error, check if dir is empty, delete if it is
     }
 
     private async downloadFile() {
-        if(!this.imageProperty){
-            return;   
-        }
-        const pattern = /^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2})$/;
-        const isBase64 = pattern.test(this.imageProperty);
-        if(!isBase64){
-            try {
-                await pipeline(
-                    got.stream(this.imageProperty, {
-                        timeout: {
-                            lookup: 3000,
-                            connect: 8000,
-                            secureConnect: 8000,
-                            socket: 1500,
-                            send: 10000,
-                            response: 12000
-                        }
-                    }),
-                    fs.createWriteStream(this.tmpFile)
-                )
-            } catch (e) {
-                const errorMsg = `Failure downloading file from ${this.imageProperty}`;
-                logger.error(errorMsg)
-                throw new Error(errorMsg)
-            }
-        } else {
-            // Todo: handle base64   
-            // Todo: We first need a flag on the collection so we know to update the images regularly
+        try {
+            await pipeline(
+                got.stream(this.imageProperty, {
+                    timeout: {
+                        lookup: 3000,
+                        connect: 8000,
+                        secureConnect: 8000,
+                        socket: 1500,
+                        send: 10000,
+                        response: 12000
+                    }
+                }),
+                fs.createWriteStream(this.tmpFile)
+            )
+        } catch (e) {
+            const errorMsg = `Failure downloading file from ${this.imageProperty}`;
+            logger.error(errorMsg)
+            throw new Error(errorMsg)
         }
     }
 
