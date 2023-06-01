@@ -42,39 +42,28 @@ const query = `SELECT *
      LIMIT ${config.querySize || 50}
 `;
 
+const getCIDStr = (field: any) : string => {
+    let ipfsCID = field.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+    if(ipfsCID !== null){
+        let path = ipfsCID[0] + "/";
+        let cidParts = field.split(path);
+        return (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+    }
+    return '';
+}
 const pinCID = (row: NFT) => {
     let ipfsCIDStr = '';
     if(row.metadata?.image){
         if(typeof row.metadata.image === 'string'){
-            let ipfsCID = row.metadata.image.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
-            if(ipfsCID !== null){
-                let path = ipfsCID[0] + "/";
-                let cidParts = row.metadata.image.split(path);
-                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
-            }
-        } else {
-            let ipfsCID = row.metadata.image.description?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
-            if(ipfsCID !== null){
-                let path = ipfsCID[0] + "/";
-                let cidParts = row.metadata.image.description?.split(path);
-                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
-            }
+            ipfsCIDStr = getCIDStr(row.metadata.image);
+        } else if(row.metadata.image.description) {
+            ipfsCIDStr = getCIDStr(row.metadata.image.description);
         }
     } else if(row.metadata?.properties?.image){
         if(typeof row.metadata.properties.image === 'string'){
-            let ipfsCID = row.metadata.properties.image.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
-            if(ipfsCID !== null){
-                let path = ipfsCID[0] + "/";
-                let cidParts = row.metadata.properties.image.split(path);
-                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
-            }
-        } else {
-            let ipfsCID = row.metadata.properties.image.description?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
-            if(ipfsCID !== null){
-                let path = ipfsCID[0] + "/";
-                let cidParts = row.metadata.properties.image.description.split(path);
-                ipfsCIDStr = (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
-            }
+            ipfsCIDStr = getCIDStr(row.metadata.properties.image);
+        } else if (row.metadata.properties.image.description) {
+            ipfsCIDStr = getCIDStr(row.metadata.properties.image.description);
         }
     }
     if(ipfsCIDStr !== ''){
