@@ -65,11 +65,11 @@ export default class Scraper {
             imageProperty = this.parseProperty(this.nft.metadata.image);
         } else if(this.nft.metadata.properties){
             imageProperty = this.parseProperty(this.nft.metadata.properties);
-        } else if(!this.nft.metadata) {
+        } else if(!this.nft.metadata && this.nft.token_uri &&  !this.nft.token_uri.endsWith('.json') && this.nft.token_uri !== '___MISSING_TOKEN_URI___') {
             const parts = this.nft.token_uri.split('.');
             const extension = parts[parts.length - 1];
             imageProperty = this.nft.token_uri.trim();
-            if(["mp4", "avi", "mpeg"].includes(extension) || imageProperty === null || imageProperty === "___MISSING_TOKEN_URI___"){
+            if(!["mp4", "avi", "mpeg"].includes(extension)){
                 logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
                 throw new Error(`No image found!!`)
             }
