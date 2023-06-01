@@ -47,7 +47,7 @@ const getCIDStr = (field: any) : string => {
     if(ipfsCID !== null){
         let path = ipfsCID[0] + "/";
         let cidParts = field.split(path);
-        return (cidParts.length > 1) ? ipfsCID[0] + "/" + cidParts[cidParts.length - 1] : ipfsCID[0];
+        return (cidParts.length > 1) ? path + cidParts[cidParts.length - 1] : ipfsCID[0];
     }
     return '';
 }
