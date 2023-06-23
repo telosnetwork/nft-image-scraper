@@ -23,7 +23,7 @@ export default class Scraper {
     private imageProperty?: string;
     private tmpFile: string;
 
-    constructor(private pool: Pool, private nft: NFT, private config: ScraperConfig) {
+    constructor(private pool: Pool, private nft: NFT, private config: ScraperConfig, private isERC1155: boolean) {
         this.targetPath = `${this.config.rootDir}/${this.nft.contract}/${this.nft.token_id}`
         this.cacheUrl = `${config.rootUrl}/${this.nft.contract}/${this.nft.token_id}`
         this.tmpFile = `${config.tempDir}/${this.nft.contract}_${this.nft.token_id}`;
@@ -165,8 +165,8 @@ export default class Scraper {
     }
 
     private async updateRowSuccess() {
-        const updateSql = `UPDATE nfts
-                           SET image_cache = $1
+        let updateSql = (this.isERC1155) ? `UPDATE erc1155` : `UPDATE nfts`;
+        updateSql += ` SET image_cache = $1
                            WHERE contract = $2
                              AND token_id = $3`;
         const updateValues = [this.cacheUrl, this.nft.contract, this.nft.token_id];
@@ -174,8 +174,8 @@ export default class Scraper {
     }
 
     private async updateRowFailure() {
-        const updateSql = `UPDATE nfts
-                           SET scrub_count = scrub_count + 1,
+        let updateSql = (this.isERC1155) ? `UPDATE erc1155` : `UPDATE nfts`;
+        updateSql += ` SET scrub_count = scrub_count + 1,
                                scrub_last  = now()
                            WHERE contract = $1
                              AND token_id = $2`;

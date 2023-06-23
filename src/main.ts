@@ -25,7 +25,24 @@ const pool = new Pool({
         port: config.dbPort,
     })
 
-const query = `SELECT *
+const ERC1155Query = `SELECT *
+    FROM erc1155
+    WHERE (image_cache = '' OR image_cache IS NULL)
+        AND metadata IS NOT NULL
+        AND metadata::text != '"___INVALID_METADATA___"'::text
+        AND (
+            scrub_count < 10
+            OR scrub_last < NOW() - INTERVAL '1 minutes' AND scrub_count < 40
+            OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 60
+            OR scrub_last < NOW() - INTERVAL '1 hours' AND scrub_count < 80
+            OR scrub_last < NOW() - INTERVAL '48 hours' AND scrub_count < 100
+            OR scrub_last < NOW() - INTERVAL '384 hours' AND scrub_count < 150
+        )
+        ORDER BY scrub_last ASC NULLS FIRST
+        LIMIT ${config.querySize || 50}
+`;
+
+const ERC721Query = `SELECT *
    FROM nfts
    WHERE (image_cache = '' OR image_cache IS NULL)
      AND metadata IS NOT NULL
@@ -80,32 +97,41 @@ const pinCID = (row: NFT) => {
         });
     }   
 }
-const fillQueue = async () => {
-        const {rows} = await pool.query<NFT>(query);
-        for (const row of rows) {
-            try {
-                pinCID(row);
-            } catch (e) {
-                logger.error(`Exception while pinning NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
-            }
-            try {
-                logger.info(`Scraping ${row.contract}:${row.token_id}`)
-
-                // TODO: Ensure that new NFTs will have last_scrub as NULL and set higher priority for those
-                queue.add(async () => {
-                    try {
-                        const scraper = new Scraper(pool, row, config);
-                        await scraper.scrapeAndResize();
-                    } catch (e: Error | any) {
-                        logger.error(`Error running scraper: ${e.message}`)
-                    }
-                })
-                logger.info(`Scraping ${row.contract}:${row.token_id} complete`)
-            } catch (e) {
-                logger.error(`Exception while scraping NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
-            }
-        }
+const scrapRow = async(row: any, is1155: boolean) => {
+    try {
+        pinCID(row);
+    } catch (e) {
+        logger.error(`Exception while pinning NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
     }
+    try {
+        logger.info(`Scraping ${row.contract}:${row.token_id}`)
+        queue.add(async () => {
+            try {
+                const scraper = new Scraper(pool, row, config, is1155);
+                await scraper.scrapeAndResize();
+            } catch (e: Error | any) {
+                logger.error(`Error running scraper: ${e.message}`)
+            }
+        })
+        logger.info(`Scraping ${row.contract}:${row.token_id} complete`)
+    } catch (e) {
+        logger.error(`Exception while scraping NFT: ${e} \n\n ${JSON.stringify(row, null, 4)}`)
+    }
+}
+const runQuery = async (query: any): Promise<any> => {
+    const { rows } = await pool.query<NFT>(query);
+    return rows;
+};
+const fillQueue = async () => {
+    let rows = await runQuery(ERC721Query);
+    rows.forEach(async (row: any) => {
+        await scrapRow(row, false);
+    });
+    rows = await runQuery(ERC1155Query);
+    rows.forEach(async (row: any) => {
+        await scrapRow(row, true);
+    });
+}
 
 ;(async () => {
     while (true) {
