@@ -64,14 +64,31 @@ export default class Scraper {
         
         return this.filterGateways(imageProperty);
     }
+    private parseProperty(field: any): string {
+        let imageProperty;
+        if (field && typeof field === "string") {
+            imageProperty = field.trim();
+        } else if (field && typeof field === "object") {
+            if(field.image && typeof field.image === "string"){
+                imageProperty = field.image;
+            } else if(
+                typeof field.image === "object"
+                && field.image.description 
+                && (field.image.description?.startsWith('ipfs://') || field.image.description?.startsWith('http'))
+            ){
+                imageProperty = field.image.description.trim()
+            } 
+        }
+        return imageProperty;
+    }
 
     private filterGateways(imageProperty: string){
         for (const gatewayUrl of gateways) {
-            if (imageProperty.startsWith(gatewayUrl)) {
+            if (imageProperty?.startsWith(gatewayUrl)) {
                 imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
             }
         }
-        if (imageProperty.includes('dstor.cloud')) {
+        if (imageProperty?.includes('dstor.cloud')) {
             const parts = imageProperty.split('://');
             const subparts = parts[1].split('.');
             imageProperty = parts[0] + "://api";
@@ -80,7 +97,7 @@ export default class Scraper {
             }
         }
         for (const gatewayUrl of gatewayDomains) {
-            if(imageProperty.includes(gatewayUrl)){
+            if(imageProperty?.includes(gatewayUrl)){
                 const parts = imageProperty.split('://');
                 const subparts = parts[1].split('/');
                 const subpartsDomain = parts[1].split('.');
@@ -93,7 +110,10 @@ export default class Scraper {
     }
     
     private async resize() {
-        await this.downloadFile();
+        if(!this.imageProperty || !this.imageProperty.startsWith('http') || this.imageProperty.length > 5000){
+            return;   
+        }
+        await this.downloadFile();  
         await this.resizeFile();
         // TODO: on error, check if dir is empty, delete if it is
     }
@@ -106,13 +126,13 @@ export default class Scraper {
         const isBase64 = (pattern.test(this.imageProperty) && this.imageProperty.length > 96);
         if(!isBase64){
             try {
-                await pipeline(
+                return await pipeline(
                     got.stream(this.imageProperty, {
                         timeout: {
                             lookup: 1000,
                             connect: 5000,
                             secureConnect: 5000,
-                            socket: 1000,
+                            socket: 5000,
                             send: 10000,
                             response: 10000
                         }
@@ -130,7 +150,6 @@ export default class Scraper {
             // Todo: We first need a flag on the collection so we know to update the images regularly
         }
     }
-
     private async resizeFile() {
         try {
             if (!fs.existsSync(this.targetPath))
