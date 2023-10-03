@@ -1,6 +1,7 @@
 import {sleep} from "./util/utils.js";
 import {createLogger} from "./util/logger.js";
 import pg from 'pg';
+import { exec } from "child_process";
 
 const Pool = pg.Pool;
 import PQueue from "p-queue";
@@ -25,20 +26,44 @@ const pool = new Pool({
     })
 
 const query = `SELECT *
-                   FROM nfts
-                   WHERE (image_cache = '' OR image_cache IS NULL)
-                     AND metadata IS NOT NULL
-                     AND metadata::text != '"___INVALID_METADATA___"'::text
-                     AND scrub_count < 100
-                   ORDER BY scrub_last ASC NULLS FIRST
-                   LIMIT ${config.querySize || 50}`;
+   FROM nfts
+   WHERE (image_cache = '' OR image_cache IS NULL)
+     AND metadata IS NOT NULL
+     AND metadata::text != '"___INVALID_METADATA___"'::text
+     AND (
+           scrub_count < 10
+           OR scrub_last < NOW() - INTERVAL '1 minutes' AND scrub_count < 50
+           OR scrub_last < NOW() - INTERVAL '5 minutes' AND scrub_count < 80
+           OR scrub_last < NOW() - INTERVAL '45 minutes' AND scrub_count < 100
+     )
+     ORDER BY scrub_last ASC NULLS FIRST
+     LIMIT ${config.querySize || 50}
+`;
 
 const fillQueue = async () => {
         const {rows} = await pool.query<NFT>(query);
         for (const row of rows) {
             try {
-                logger.info(`Scraping ${row.contract}:${row.token_id}`)
-                // TODO: Ensure that new NFTs will have last_scrub as NULL and set higher priority for those
+                logger.info(`Scraping ${row.contract}:${row.token_id}`);
+
+                let ipfsCID = row.metadata?.image?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
+                if(ipfsCID !== null){
+                    let path = ipfsCID[0] + "/";
+                    let cidParts = row.metadata?.image.split(path);
+                    let ipfsCIDStr = (cidParts.length > 1) ? path + cidParts[cidParts.length - 1] : ipfsCID[0];
+                    logger.info("Pinning " + ipfsCIDStr);
+		    exec("export IPFS_PATH=/ipfs", (err) => {
+                        if(err){
+                            console.error("Could not set export path: " + err);
+                        } else {
+                            exec("ipfs pin add " + ipfsCIDStr, (e) => {
+                                if(e){
+                                    console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
+                                }
+                            });
+                        }
+                    });
+                }
                 queue.add(async () => {
                     try {
                         const scraper = new Scraper(pool, row, config);

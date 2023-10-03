@@ -8,11 +8,13 @@ import stream from 'node:stream';
 import {promisify} from 'node:util'
 
 const pipeline = promisify(stream.pipeline);
-
 const logger = createLogger('Scraper');
 
 const gateways = [
-    "https://gateway.pinata.cloud/ipfs/"
+    "https://gateway.pinata.cloud/ipfs/", "https://nftstorage.link/ipfs/", "https://kitchen.mypinata.cloud/ipfs/"
+]
+const gatewayDomains = [
+    "nftstorage.link"
 ]
 
 export default class Scraper {
@@ -42,23 +44,54 @@ export default class Scraper {
 
     private getImageUrl(): string {
         let imageProperty
-        if (this.nft.metadata.image) {
+        if (this.nft.metadata?.image) {
             imageProperty = this.nft.metadata.image.trim()
         } else {
-            logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
-            throw new Error(`No image found!!`)
+            const parts = this.nft.token_uri.split('.');
+            const extension = parts[parts.length - 1];
+            imageProperty = this.nft.token_uri.trim();
+            if(["mp4", "avi", "mpeg"].includes(extension) || imageProperty === null || imageProperty === "___MISSING_TOKEN_URI___"){
+                logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
+                throw new Error(`No image found!!`)
+            }
         }
 
         if (imageProperty.startsWith("ipfs://"))
             imageProperty = imageProperty.replace("ipfs://", `${this.config.ipfsGateway}/`)
-
-        for (const gatewayUrl of gateways)
-            if (imageProperty.startsWith(gatewayUrl))
-                imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
-
-        return imageProperty;
+        
+        if (imageProperty.startsWith("ipfs/"))
+            imageProperty = imageProperty.replace("ipfs/", `${this.config.ipfsGateway}/`)
+        
+        return this.filterGateways(imageProperty);
     }
 
+    private filterGateways(imageProperty: string){
+        for (const gatewayUrl of gateways) {
+            if (imageProperty.startsWith(gatewayUrl)) {
+                imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
+            }
+        }
+        if (imageProperty.includes('dstor.cloud')) {
+            const parts = imageProperty.split('://');
+            const subparts = parts[1].split('.');
+            imageProperty = parts[0] + "://api";
+            for(let i = 1; i < subparts.length;i++){
+               imageProperty = imageProperty + '.' + subparts[i]
+            }
+        }
+        for (const gatewayUrl of gatewayDomains) {
+            if(imageProperty.includes(gatewayUrl)){
+                const parts = imageProperty.split('://');
+                const subparts = parts[1].split('/');
+                const subpartsDomain = parts[1].split('.');
+                if(subparts[1]?.length > 0 && subpartsDomain[0]?.length > 0){
+                    imageProperty = this.config.ipfsGateway + '/' + subpartsDomain[0] + "/" + subparts[1];
+                }
+            }
+        }
+        return imageProperty;
+    }
+    
     private async resize() {
         await this.downloadFile();
         await this.resizeFile();
@@ -66,24 +99,35 @@ export default class Scraper {
     }
 
     private async downloadFile() {
-        try {
-            await pipeline(
-                got.stream(this.imageProperty, {
-                    timeout: {
-                        lookup: 1000,
-                        connect: 5000,
-                        secureConnect: 5000,
-                        socket: 1000,
-                        send: 10000,
-                        response: 10000
-                    }
-                }),
-                fs.createWriteStream(this.tmpFile)
-            )
-        } catch (e) {
-            const errorMsg = `Failure downloading file from ${this.imageProperty}`;
-            logger.error(errorMsg)
-            throw new Error(errorMsg)
+        if(!this.imageProperty){
+            return;   
+        }
+        const pattern = /^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2})$/;
+        const isBase64 = (pattern.test(this.imageProperty) && this.imageProperty.length > 96);
+        if(!isBase64){
+            try {
+                await pipeline(
+                    got.stream(this.imageProperty, {
+                        timeout: {
+                            lookup: 1000,
+                            connect: 5000,
+                            secureConnect: 5000,
+                            socket: 1000,
+                            send: 10000,
+                            response: 10000
+                        }
+                    }),
+                    fs.createWriteStream(this.tmpFile)
+                )
+            } catch (e: Error | any) {
+                const errorMsg = `Failure downloading file from ${this.imageProperty}: ${e.message}`;
+                logger.error(errorMsg)
+                throw new Error(errorMsg)
+            }
+        } else {
+	    logger.error("is base64");
+            // Todo: handle base64   
+            // Todo: We first need a flag on the collection so we know to update the images regularly
         }
     }
 
@@ -91,16 +135,16 @@ export default class Scraper {
         try {
             if (!fs.existsSync(this.targetPath))
                 fs.mkdirSync(this.targetPath, {recursive: true});
-
-            await sharp(this.tmpFile).resize({width: 280})
+        
+            await sharp(this.tmpFile, {pages: -1}).resize({width: 280})
                 .webp()
                 .toFile(`${this.targetPath}/280.webp`)
 
-            await sharp(this.tmpFile).resize({width: 1440})
+            await sharp(this.tmpFile, {pages: -1}).resize({width: 1440})
                 .webp()
                 .toFile(`${this.targetPath}/1440.webp`)
-        } catch (e) {
-            const errorMsg = `Failure resizing file from ${this.tmpFile}`;
+        } catch (e: Error | any) {
+            const errorMsg = `Failure resizing file from ${this.tmpFile}: ${e.message}`;
             logger.error(errorMsg)
             throw new Error(errorMsg)
         }
@@ -124,5 +168,4 @@ export default class Scraper {
         const updateValues = [this.nft.contract, this.nft.token_id];
         await this.pool.query(updateSql, updateValues);
     }
-
 }
