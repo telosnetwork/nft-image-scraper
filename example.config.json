@@ -1,10 +1,21 @@
 {
     "networkName": "telos-mainnet",
-    "dbHost": "localhost",
-    "dbPort": 5455,
-    "dbName": "teloscan",
-    "dbUser": "teloscan",
-    "dbPass": "teloscan",
+    "databases": [
+        {
+            "host": "localhost",
+            "port": 5455,
+            "name": "teloscan",
+            "user": "teloscan",
+            "password": "teloscan"
+        },
+        {
+            "host": "localhost",
+            "port": 5454,
+            "name": "teloscan",
+            "user": "teloscan",
+            "password": "teloscan"
+        }
+    ],
     "ipfsGateway": "https://ipfs.io/ipfs",
     "querySize": 50,
     "queueConcurrency": 16,

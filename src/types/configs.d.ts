@@ -1,9 +1,5 @@
 export interface ScraperConfig {
-    dbHost: string
-    dbPort: number
-    dbName: string
-    dbUser: string
-    dbPass: string
+    databases: array,
     ipfsGateway: string
     querySize: number
     queueConcurrency: number
