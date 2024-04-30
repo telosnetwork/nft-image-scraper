@@ -82,7 +82,7 @@ export default class Scraper {
         return imageProperty;
     }
 
-    private filterGateways(imageProperty: string){
+    private filterGateways(imageProperty: string): string {
         for (const gatewayUrl of gateways) {
             if (imageProperty?.startsWith(gatewayUrl)) {
                 imageProperty = imageProperty.replace(gatewayUrl, `${this.config.ipfsGateway}/`)
@@ -176,6 +176,7 @@ export default class Scraper {
                              AND token_id = $3`;
         const updateValues = [this.cacheUrl, this.nft.contract, this.nft.token_id];
         await this.pool.query(updateSql, updateValues);
+        // TODO: add in scrapper DB
     }
 
     private async updateRowFailure() {

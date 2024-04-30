@@ -18,7 +18,7 @@
     ],
     "ipfsGateway": "https://ipfs.io/ipfs",
     "querySize": 50,
-    "queueConcurrency": 16,
+    "queueConcurrency": 48,
     "rootDir": "/tmp/nfts/40",
     "tempDir": "/tmp/nft-downloads",
     "rootUrl": "https://nfts.telos.net/40"
