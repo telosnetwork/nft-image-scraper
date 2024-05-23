@@ -1,16 +1,17 @@
 import {sleep, getPool, pinCID} from "./util/utils.js";
 import {createLogger} from "./util/logger.js";
-import { exec } from "child_process";
+import { exec, ExecException } from "child_process";
 
 import PQueue from "p-queue";
 import Scraper from "./scraper.js";
 import {readFileSync} from 'fs'
 import {ScraperConfig} from "./types/configs.js";
+import { Pool, QueryResult } from "pg";
 
 const configFile = new URL('../config.json', import.meta.url);
 const config: ScraperConfig = JSON.parse(readFileSync(configFile, 'utf-8'))
 
-const logger = createLogger('NFTScraper main');
+const logger = createLogger('NFTScraper main', config.logLevel);
 
 const queueConcurrency = config.queueConcurrency || 16;
 const queue = new PQueue({concurrency: queueConcurrency});
@@ -33,10 +34,23 @@ const query = `SELECT *
      LIMIT ${config.querySize || 50}
 `;
 const fillQueue = async () => {
-    for(const database in config.databases){
-        const pool = getPool(database);
-        const {rows} = await pool.query<NFT>(query);
-        for (const row of rows) {
+    for(const i in config.databases){
+        const database = config.databases[i];
+        logger.debug(`Filling queue for ${database.name}...`);
+        let data: QueryResult<NFT> | undefined;
+        let pool: Pool;
+        try {
+            pool = getPool(database);
+            data = await pool.query<NFT>(query);
+            if(data.rows.length === 0){
+                logger.debug(`No data to process found in ${database.name}`);
+                continue;
+            }
+        } catch(e) {
+            logger.error(`Error querying database ${database.name}: ${e}`);
+            continue;
+        }
+        for (const row of data?.rows) {
             // TODO: if scrub_count is 99 add as failed in scrapper DB, will get overwritten if following scrap is successful
             // TODO: check if collection + tokenId in database, if so skip next and add indexer DB update in queue using reconstructed URL
             try {
@@ -48,11 +62,11 @@ const fillQueue = async () => {
                     let cidParts = row.metadata?.image.split(path);
                     let ipfsCIDStr = (cidParts.length > 1) ? path + cidParts[cidParts.length - 1] : ipfsCID[0];
                     logger.info("Pinning " + ipfsCIDStr);
-                    exec("export IPFS_PATH=/ipfs", (err: Error) => {
+                    exec("export IPFS_PATH=/ipfs", (err : ExecException | null) => {
                         if(err){
                             console.error("Could not set export path: " + err);
                         } else {
-                            exec("ipfs pin add " + ipfsCIDStr, (e: Error) => {
+                            exec("ipfs pin add " + ipfsCIDStr, (e : ExecException | null) => {
                                 if(e){
                                     console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
                                 }

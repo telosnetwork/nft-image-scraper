@@ -6,4 +6,5 @@ export interface ScraperConfig {
     rootDir: string
     tempDir: string
     rootUrl: string
+    logLevel: string
 }

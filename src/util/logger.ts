@@ -1,8 +1,7 @@
 import { pino } from 'pino'
 const devMode = process.env.MODE == 'dev'
 
-export function createLogger(source: string) {
-    const logLevel = process.env.API_LOG_LEVEL || 'info'
+export function createLogger(source: string, logLevel: string = "info") {
     console.log(`Creating logger for ${source} ${devMode ? ' in dev mode ' : ''} with level ${logLevel}`)
     const options = {
         level: logLevel,

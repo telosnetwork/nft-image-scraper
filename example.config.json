@@ -1,4 +1,5 @@
 {
+    "logLevel": "info",
     "networkName": "telos-mainnet",
     "databases": [
         {
