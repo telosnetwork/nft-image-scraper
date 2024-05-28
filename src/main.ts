@@ -57,7 +57,6 @@ const handleRemoteData = async (localPool: pg.Pool) : Promise<void> => {
             let exists : pg.QueryResult<NFT>
             try {
                 exists = await localPool.query(LOCAL_QUERY_NFT , [row.contract, row.token_id]);
-                // TODO: add date comparaison so we retry scraping after a certain time
             } catch(e: Error | any){
                 logger.error(`Error querying local database for row ${row.contract}:${row.token_id}: ${e}`);
                 continue;
@@ -72,34 +71,37 @@ const handleRemoteData = async (localPool: pg.Pool) : Promise<void> => {
                     } catch(e: Error | any){
                         logger.error(`Error updating remote database for row ${row.contract}:${row.token_id}: ${e}`);
                     }
+                    // TODO: add date comparaison so we retry scraping after a certain time, skip only if time hasn't elapsed.
                     continue; // Skip as already scraped
                 }
             } else if(exists.rowCount > 0){
-                // Continue with scrapping only if scrub count < LIMIT, else skip....
                 if(exists.rows[0].scrub_count >= 100){
-                    continue;
+                    continue; // Skip if scrub count >= LIMIT
                 }
             } else {
-                logger.debug(`Inserting ${row.contract}:${row.token_id} locally`);
+                logger.debug(`Inserting NFT ${row.contract}:${row.token_id} locally...`);
                 // Get block hash from remote
                 let blockHash: string;
                 try {
                     const blockResult : pg.QueryResult = await remotePool.query(`SELECT * FROM blocks WHERE number = $1 LIMIT 1;`, [row.block_minted]);
                     if(blockResult.rowCount === 0){
-                        continue;
+                        logger.debug(`Block ${row.block_minted} not found in remote database ${database.host}:${database.name}`)
+                        continue; // Skip if block not found
                     }
                     blockHash = blockResult.rows[0].hash;
                 } catch(e: Error | any){
                     logger.error(`Error querying remote database block hash of ${row.block_minted} on ${database.host}:${database.name} : ${e}`);
-                    continue;
+                    continue; // Skip if block not found
                 }
+
                 // Insert into local database
                 try {
                     await localPool.query(`
                         INSERT INTO nfts (block_minted, block_hash, contract, token_id, metadata, scrub_count, scrub_last, updated_at, scraped)
                         VALUES ($1, $2, $3, $4, $5, 0, NOW(), NULL, FALSE)
                         ON CONFLICT (contract, token_id) DO NOTHING
-                    `, [row.block_minted, blockHash, row.contract, row.token_id, row.metadata])
+                    `, [row.block_minted, blockHash, row.contract, row.token_id, row.metadata]);
+                    logger.info(`Inserted NFT ${row.contract}:${row.token_id} locally`);
                 } catch(e: Error | any){
                     logger.error(`Error inserting in local database for row ${row.contract}:${row.token_id}: ${e}`);
                 }
@@ -109,7 +111,7 @@ const handleRemoteData = async (localPool: pg.Pool) : Promise<void> => {
             // If we are running on an IPFS node try to pin
             if(config.localIpfs){
                 try {
-                    logger.info(`Parsing CID from metadata for ${row.contract}:${row.token_id}`);
+                    logger.debug(`Parsing CID from metadata for ${row.contract}:${row.token_id}...`);
                     // TODO: make sure this is needed rather than just pinCID call; Is it the parent CID / folder ?
                     let ipfsCID = row.metadata?.image?.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
                     if(ipfsCID !== null){
@@ -119,11 +121,11 @@ const handleRemoteData = async (localPool: pg.Pool) : Promise<void> => {
                         logger.info(`Found CID ${ipfsCIDStr} for ${row.contract}:${row.token_id}. Pinning...`);
                         exec("export IPFS_PATH=/ipfs", (err : ExecException | null) => {
                             if(err){
-                                logger.error("Could not set export path: " + err);
+                                logger.error("Could not set IPFS_PATH export path: " + err);
                             } else {
                                 exec("ipfs pin add " + ipfsCIDStr, (e : ExecException | null) => {
                                     if(e){
-                                        logger.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
+                                        logger.error("Could not pin content to IPFS with CID "  + ipfsCIDStr + ": " +  e);
                                     }
                                 });
                             }

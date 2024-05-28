@@ -7,6 +7,7 @@ import stream from 'node:stream';
 import {promisify} from 'node:util'
 import { getPath } from "./util/utils.js";
 import { Logger } from "pino";
+import { getPool } from "./util/database.js";
 
 const pipeline = promisify(stream.pipeline);
 
@@ -41,6 +42,7 @@ export default class Scraper {
             this.logger.debug("img:" + this.imageProperty);
             await this.resize();
             await this.updateRowSuccess();
+            await this.updateRemoteSuccess();
         } catch (e: Error | any) {
             this.logger.error(`Failure scraping nft: ${this.nft.contract}:${this.nft.token_id} from url: ${this.imageProperty}: ${e.message}`)
             await this.updateRowFailure();
@@ -183,6 +185,13 @@ export default class Scraper {
             const errorMsg = `Failure resizing file from ${this.tmpFile}: ${e.message}`;
             this.logger.error(errorMsg)
             throw new Error(errorMsg)
+        }
+    }
+
+    private async updateRemoteSuccess() {
+        for(const database of this.config.databases){
+            const remotePool : Pool = await getPool(database);
+            await remotePool.query(`UPDATE nfts SET image_cache = $1 WHERE contract = $2 AND token_id = $3`, [getPath(this.config, this.nft.contract, this.nft.token_id), this.nft.contract, this.nft.token_id]);
         }
     }
 

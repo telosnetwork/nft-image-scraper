@@ -86,7 +86,7 @@ export async function getLastCorrectBlock (localPool: pg.Pool, logger : Logger) 
             }
 
             if(mainDatabase){
-                logger.debug(`Database with highest block: ${mainDatabase.name} with block ${highestBlock}`);
+                logger.debug(`Database with highest block: ${mainDatabase.host}:${mainDatabase.name} with block ${highestBlock}`);
                 const remotePool : pg.Pool = await getPool(mainDatabase);
 
                 // Check if the block hashes match
