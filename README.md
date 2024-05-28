@@ -2,19 +2,20 @@
 
 ## Operator Setup
 
-Install Yarn  
+### Install Yarn  
 
 ```bash
 sudo npm install --global yarn
 ```
 
-Copy the example config and modify as needed
+### Copy the example config and modify as needed
 
 ```bash
 cp example.config.json config.json
 ```
+Turn the localIPFS flag on if you are running IPFS locally
 
-Run the scraper  
+### Run the scraper  
 
 ```bash
 ./start.sh
