@@ -1,6 +1,6 @@
 # NFT image scraper
 
-This scraper reads NFTs tables on our Teloscan Indexer databases and will pin media to IPFS before scrapping it, resizing it and saving it.
+This scraper reads NFTs tables on our [Teloscan Indexer](https://github.com/telosnetwork/teloscan-indexer/) databases and will pin media to IPFS before scrapping it, resizing it and saving it.
 It will then update the remote database accordingly.
 It has a local database to keep track of NFTs' scrap count.
 
