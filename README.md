@@ -14,12 +14,6 @@ Copy the example config and modify as needed
 cp example.config.json config.json
 ```
 
-Build the scraper  
-
-```bash
-yarn run build
-```
-
 Run the scraper  
 
 ```bash
