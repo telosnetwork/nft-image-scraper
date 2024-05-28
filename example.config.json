@@ -17,7 +17,15 @@
             "password": "teloscan"
         }
     ],
+    "database": {
+        "host": "127.0.0.1",
+        "port": 5432,
+        "name": "scrapermainnet",
+        "user": "teloscan",
+        "password": "Kainos2020!"
+    },
     "ipfsGateway": "https://ipfs.io/ipfs",
+    "localIpfs": true,
     "querySize": 50,
     "queueConcurrency": 48,
     "rootDir": "/tmp/nfts/40",

@@ -1,7 +1,7 @@
-import { pino } from 'pino'
+import { Logger, pino } from 'pino'
 const devMode = process.env.MODE == 'dev'
 
-export function createLogger(source: string, logLevel: string = "info") {
+export function createLogger(source: string, logLevel: string = "info") : Logger {
     console.log(`Creating logger for ${source} ${devMode ? ' in dev mode ' : ''} with level ${logLevel}`)
     const options = {
         level: logLevel,
@@ -13,6 +13,5 @@ export function createLogger(source: string, logLevel: string = "info") {
             }
         }
     }
-
     return pino(options)
 }

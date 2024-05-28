@@ -1,5 +1,6 @@
 export interface ScraperConfig {
-    databases: array,
+    databases: DatabaseConfig[],
+    database: DatabaseConfig,
     ipfsGateway: string
     querySize: number
     queueConcurrency: number
@@ -7,4 +8,13 @@ export interface ScraperConfig {
     tempDir: string
     rootUrl: string
     logLevel: string
+    localIpfs: boolean
+}
+
+export interface DatabaseConfig {
+    name: string;
+    user: string;
+    password: string;
+    host: string;
+    port: number;
 }
