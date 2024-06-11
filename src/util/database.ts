@@ -72,7 +72,7 @@ export async function getBlockHash(remotePool: pg.Pool, database: DatabaseConfig
     try {
         const blockResult : pg.QueryResult = await remotePool.query(`SELECT * FROM blocks WHERE number = $1 LIMIT 1;`, [block]);
         if(blockResult.rowCount === 0){
-            logger.debug(`Block ${row.block_minted} not found in remote database ${database.host}:${database.name}`)
+            logger.debug(`Block ${block} not found in remote database ${database.host}:${database.name}`)
         } else {
             blockHash = blockResult.rows[0].hash;
         }
