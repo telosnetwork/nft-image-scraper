@@ -34,7 +34,7 @@ const handleRemoteERC = async (localPool: Pool, latestNFT: number, table: string
         // Get rows from remote DB
         try {
             remotePool = await getPool(database);
-            data = await remotePool.query<NFT>(getRemoteQuery(latestNFT, table));
+            data = await remotePool.query<NFT>(getRemoteQuery(table));
             if(data.rowCount === 0){
                 logger.debug(`No data to process found in ${database.host}:${database.name}`);
                 continue;
