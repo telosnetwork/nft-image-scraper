@@ -89,7 +89,7 @@ export async function insertNFT(localPool: pg.Pool, row: NFT, blockHash: string,
             VALUES ($1, $2, $3, $4, $5, $6, 0, NOW(), NULL, FALSE)
             ON CONFLICT (contract, token_id) 
             DO UPDATE SET scraped = FALSE, scrub_count = 0;
-        `, [row.block_minted, blockHash, row.contract, row.token_id, row.metadata, type]);
+        `, [(row.block_minted || row.block_created), blockHash, row.contract, row.token_id, row.metadata, type]);
         logger.info(`Inserted ERC721 ${row.contract}:${row.token_id} locally`);
     } catch(e: Error | any){
         logger.error(`Error inserting in local database for row ${row.contract}:${row.token_id}: ${e}`);
