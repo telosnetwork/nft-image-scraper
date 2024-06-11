@@ -1,8 +1,11 @@
 
-import { exec } from "child_process";
-import {ScraperConfig} from "../types/configs.js";
-import {createLogger} from "./logger.js";
-const logger = createLogger('database.ts');
+import { exec, ExecException } from "child_process";
+import { ScraperConfig } from "../types/configs.js";
+import { Logger } from "pino";
+import { readFileSync } from 'fs';
+
+const configFile = new URL('../../config.json', import.meta.url);
+const config: ScraperConfig = JSON.parse(readFileSync(configFile, 'utf-8'));
 
 export function sleep(ms: number) : Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -11,13 +14,16 @@ export function sleep(ms: number) : Promise<void> {
 export function getCIDStr (field: string) : string {
     let ipfsCID = field.match(/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|b[A-Za-z2-7]{58,}|B[A-Z2-7]{58,}|z[1-9A-HJ-NP-Za-km-z]{48,}|F[0-9A-F]{50,})$/);
     if(ipfsCID !== null){
-        let path = ipfsCID[0] + "/";
+        let path : string = ipfsCID[0] + "/";
         let cidParts = field.split(path);
         return (cidParts.length > 1) ? path + cidParts[cidParts.length - 1] : ipfsCID[0];
     }
     return '';
 }
-export function pinCID(row: NFT) : void {
+export function pinIPFS(row: NFT, logger: Logger) : void {
+    if(!config.localIpfs){
+        return;
+    }
     let ipfsCIDStr = '';
     if(row.metadata?.image){
         if(typeof row.metadata.image === 'string'){
@@ -34,11 +40,11 @@ export function pinCID(row: NFT) : void {
     }
     if(ipfsCIDStr !== ''){
         try {
-            exec("export IPFS_PATH=/ipfs", (err) => {
+            exec("export IPFS_PATH=/ipfs", (err : ExecException | null) => {
                 if(err){
                     console.error("Could not set export path: " + err);
                 } else {
-                    exec("ipfs pin add " + ipfsCIDStr, (e) => {
+                    exec("ipfs pin add " + ipfsCIDStr, (e : ExecException | null) => {
                         if(e){
                             console.error("Could not pin content with CID "  + ipfsCIDStr + ": " +  e);
                         }

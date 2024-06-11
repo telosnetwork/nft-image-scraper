@@ -4,6 +4,7 @@ interface Metadata {
 }
 
 interface NFT {
+    erc: number
     block_hash: string
     block_minted: number
     scraped: boolean

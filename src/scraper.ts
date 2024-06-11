@@ -203,7 +203,8 @@ export default class Scraper {
         const updateSql = `
             UPDATE nfts
             SET scrub_count = scrub_count + 1,
-                scrub_last  = now()
+                scrub_last  = now(),
+                updated_at = now()
             WHERE contract = $1
             AND token_id = $2
         `;
