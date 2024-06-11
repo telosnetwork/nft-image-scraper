@@ -68,6 +68,8 @@ export async function getBlockHash(remotePool: pg.Pool, database: DatabaseConfig
     let block: number = (row.block_minted) ? row.block_minted : row.block_created;
     if(!block){
         logger.error(`No block found for ${row.contract}:${row.token_id}`);
+        logger.error(`${row.block_minted}`);
+        logger.error(`${row.block_created}`);
     }
     try {
         const blockResult : pg.QueryResult = await remotePool.query(`SELECT * FROM blocks WHERE number = $1 LIMIT 1;`, [block]);
