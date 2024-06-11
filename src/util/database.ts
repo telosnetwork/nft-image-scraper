@@ -32,6 +32,7 @@ export function getRemoteQuery (block: number = 0, table: string = 'nfts') : str
     return `SELECT *
         FROM ${table}
         WHERE (image_cache = '' OR image_cache IS NULL)
+        AND ${orderField} IS NOT NULL
         AND metadata IS NOT NULL
         AND metadata::text != '"___INVALID_METADATA___"'::text
         ORDER BY ${orderField} DESC
