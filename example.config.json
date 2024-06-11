@@ -5,24 +5,24 @@
         {
             "host": "localhost",
             "port": 5455,
-            "name": "teloscan",
-            "user": "teloscan",
-            "password": "teloscan"
+            "name": "dbname",
+            "user": "username",
+            "password": "password"
         },
         {
             "host": "localhost",
             "port": 5454,
-            "name": "teloscan",
-            "user": "teloscan",
-            "password": "teloscan"
+            "name": "dbname2",
+            "user": "username2",
+            "password": "password2"
         }
     ],
     "database": {
         "host": "127.0.0.1",
         "port": 5432,
-        "name": "scrapermainnet",
-        "user": "teloscan",
-        "password": "Kainos2020!"
+        "name": "dbname",
+        "user": "username",
+        "password": "password"
     },
     "ipfsGateway": "https://ipfs.io/ipfs",
     "localIpfs": true,
