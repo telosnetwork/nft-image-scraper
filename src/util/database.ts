@@ -28,12 +28,13 @@ ORDER BY scrub_count ASC LIMIT ${config.querySize || 500};
 `
 
 export function getRemoteQuery (block: number = 0, table: string = 'nfts') : string {
+    let orderField = (table === 'nfts') ? 'block_minted' : 'block_created';
     return `SELECT *
         FROM ${table}
         WHERE (image_cache = '' OR image_cache IS NULL)
         AND metadata IS NOT NULL
         AND metadata::text != '"___INVALID_METADATA___"'::text
-        ORDER BY block_minted DESC
+        ORDER BY ${orderField} DESC
         LIMIT ${config.querySize || 500}
     `;
 }
