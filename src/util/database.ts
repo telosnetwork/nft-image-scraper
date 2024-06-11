@@ -65,11 +65,9 @@ export async function updateRemote(remotePool: pg.Pool, database: DatabaseConfig
 }
 export async function getBlockHash(remotePool: pg.Pool, database: DatabaseConfig, row: NFT, logger: Logger) : Promise<string> {
     let blockHash: string = '';
-    let block: number = (row.block_minted) ? row.block_minted : row.block_created;
+    let block: number =  row.block_created || row.block_minted;
     if(!block){
         logger.error(`No block found for ${row.contract}:${row.token_id}`);
-        logger.error(`${row.block_minted}`);
-        logger.error(`${row.block_created}`);
     }
     try {
         const blockResult : pg.QueryResult = await remotePool.query(`SELECT * FROM blocks WHERE number = $1 LIMIT 1;`, [block]);

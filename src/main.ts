@@ -68,7 +68,6 @@ const handleRemoteERC = async (localPool: Pool, latestNFT: number, table: string
             } else {
                 logger.debug(`Inserting ERC${type} ${row.contract}:${row.token_id} locally...`);
                 // Get block hash from remote
-                logger.debug(`Getting block hash for ${row.block_created || row.block_minted }`);
                 let blockHash : string = await getBlockHash(remotePool, database, row, logger);
                 if(blockHash === ''){
                     continue;
