@@ -36,7 +36,7 @@ const handleRemoteERC = async (localPool: Pool, latestNFT: number, table: string
             remotePool = await getPool(database);
             data = await remotePool.query<NFT>(getRemoteQuery(latestNFT, table));
             if(data.rowCount === 0){
-                logger.debug(`No data to process found in ${database.host}:${database.name}`);
+                logger.debug(`No ERC${type} data to process found in ${database.host}:${database.name}`);
                 continue;
             } 
             logger.debug(`${data.rowCount} ERC${type}(s) found on ${database.host}:${database.name}...`);
@@ -56,26 +56,18 @@ const handleRemoteERC = async (localPool: Pool, latestNFT: number, table: string
             }
             if(exists.rowCount > 0 && exists.rows[0].scraped){
                 let row : NFT = exists.rows[0];
-                if(row.scraped){
-                    await updateRemote(remotePool, database,  row, type, table, logger);
-                    // TODO: add date comparaison so we retry scraping after a certain time, skip only if time hasn't elapsed.
-                    continue; // Skip as already scraped
-                }
-            } else if(exists.rowCount > 0){
-                if(exists.rows[0].scrub_count >= 100){
-                    continue; // Skip if scrub count >= LIMIT
-                }
-            } else {
+                await updateRemote(remotePool, database,  row, type, table, logger);
+                // TODO: add date comparaison so we retry scraping after a certain time, skip only if time hasn't elapsed.
+            } else if(exists.rowCount === 0){
                 logger.debug(`Inserting ERC${type} ${row.contract}:${row.token_id} locally...`);
                 // Get block hash from remote
-                logger.debug(`Getting block hash for ${row.block_created || row.block_minted }`);
                 let blockHash : string = await getBlockHash(remotePool, database, row, logger);
                 if(blockHash === ''){
                     continue;
                 }
                 await insertNFT(localPool, row, blockHash, type, logger);
+                pinIPFS(row, logger);
             }
-            pinIPFS(row, logger);
         }
     }
 }

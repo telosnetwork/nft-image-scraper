@@ -1,5 +1,6 @@
 import {Pool} from "pg";
 import sharp from 'sharp';
+import ffmpeg from 'fluent-ffmpeg';
 import got from 'got';
 import fs from "fs";
 import {ScraperConfig} from "./types/configs.js";
@@ -33,9 +34,10 @@ export default class Scraper {
     async scrapeAndResize() {
         this.logger.debug("img:" + this.imageProperty);
         try {
-            this.imageProperty = this.getImageUrl()
-            if(this.imageProperty === null || this.imageProperty.length < 5){
-                this.logger.debug(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metadata: ${JSON.stringify(this.nft.metadata)}`);
+            this.imageProperty = this.getImageUrl();
+            const ext: string = this.imageProperty?.split('.').pop()?.toLowerCase() || '';
+            if(this.imageProperty === null || this.imageProperty.length < 5 || ['mp4', 'avi', 'mpeg'].includes(ext) || this.imageProperty === "___MISSING_TOKEN_URI___"){
+                this.logger.debug(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id}`);
                 await this.pool.query(`UPDATE nfts SET scrub_count = 100 WHERE contract = $1 AND token_id = $2`, [this.nft.contract, this.nft.token_id]);
                 return;
             }
@@ -48,7 +50,7 @@ export default class Scraper {
             await this.updateRowFailure();
         } 
         try {
-            await fs.unlinkSync(this.tmpFile)
+            fs.unlinkSync(this.tmpFile)
         } catch(e: Error | any) {
             this.logger.error(`Failure deleting tmp file: ${this.tmpFile}: ${e}`)
         }
@@ -66,8 +68,7 @@ export default class Scraper {
             const extension = parts[parts.length - 1];
             imageProperty = this.nft.token_uri.trim();
             if(["mp4", "avi", "mpeg"].includes(extension) || imageProperty === null || imageProperty === "___MISSING_TOKEN_URI___"){
-                this.logger.error(`No image found for NFT: ${this.nft.contract}:${this.nft.token_id} from metdata: ${JSON.stringify(this.nft.metadata)}`);
-                throw new Error(`No image found`)
+                return null;
             }
         } else {    
             return null;
@@ -132,20 +133,32 @@ export default class Scraper {
         if(!this.imageProperty || !this.imageProperty.startsWith('http') || this.imageProperty.length > 5000){
             return;   
         }
-        await this.downloadFile();  
-        await this.resizeFile();
-        // TODO: on error, check if dir is empty, delete if it is
+        try {
+            let downloaded = await this.downloadFile();
+            if(downloaded){
+                await this.resizeFile();
+            }  
+        } catch(e: any | Error) {
+            if (!fs.existsSync(this.targetPath)){
+                return;
+            }
+            const files = fs.readdirSync(this.targetPath);
+            if (files.length === 0) {
+                fs.rmdirSync(this.targetPath, {recursive: true});
+            }
+            // TODO: Check if the contract folder still has subfolders, delete the contract folder if not
+        }
     }
 
-    private async downloadFile() {
+    private async downloadFile(): Promise<boolean> {
         if(!this.imageProperty){
-            return;   
+            return false;   
         }
         const pattern = /^(?:[A-Za-z0-9+\/]{4})*(?:[A-Za-z0-9+\/]{4}|[A-Za-z0-9+\/]{3}=|[A-Za-z0-9+\/]{2}={2})$/;
         const isBase64 = (pattern.test(this.imageProperty) && this.imageProperty.length > 96);
         if(!isBase64){
             try {
-                return await pipeline(
+                await pipeline(
                     got.stream(this.imageProperty, {
                         timeout: {
                             lookup: 1000,
@@ -158,6 +171,9 @@ export default class Scraper {
                     }),
                     fs.createWriteStream(this.tmpFile)
                 )
+                if(fs.existsSync(this.tmpFile)){
+                    return true;
+                }
             } catch (e: Error | any) {
                 const errorMsg = `Failure downloading file from ${this.imageProperty}: ${e.message}`;
                 this.logger.error(errorMsg)
@@ -168,12 +184,18 @@ export default class Scraper {
             // Todo: handle base64   
             // Todo: We first need a flag on the collection so we know to update the images regularly
         }
+        return false;
     }
     private async resizeFile() {
         try {
             if (!fs.existsSync(this.targetPath))
                 fs.mkdirSync(this.targetPath, {recursive: true});
         
+            const ext: string | null = this.imageProperty?.split('.').pop()?.toLowerCase() || null;
+            if(ext === 'mp4'){
+                // Replace file with a png screenshot
+                return;
+            }
             await sharp(this.tmpFile, {pages: -1}).resize({width: 280})
                 .webp()
                 .toFile(`${this.targetPath}/280.webp`)
@@ -181,6 +203,8 @@ export default class Scraper {
             await sharp(this.tmpFile, {pages: -1}).resize({width: 1440})
                 .webp()
                 .toFile(`${this.targetPath}/1440.webp`)
+
+            fs.rmSync(this.tmpFile);
         } catch (e: Error | any) {
             const errorMsg = `Failure resizing file from ${this.tmpFile}: ${e.message}`;
             this.logger.error(errorMsg)
